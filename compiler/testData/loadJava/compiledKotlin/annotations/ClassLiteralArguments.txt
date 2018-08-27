@@ -1,0 +1,13 @@
+package test
+
+public final annotation class Anno : kotlin.Annotation {
+    /*primary*/ public constructor Anno(/*0*/ klass: kotlin.reflect.KClass<*>, /*1*/ klasses: kotlin.Array<kotlin.reflect.KClass<*>>)
+    public final val klass: kotlin.reflect.KClass<*>
+        public final fun <get-klass>(): kotlin.reflect.KClass<*>
+    public final val klasses: kotlin.Array<kotlin.reflect.KClass<*>>
+        public final fun <get-klasses>(): kotlin.Array<kotlin.reflect.KClass<*>>
+}
+
+@test.Anno(klass = kotlin.String::class, klasses = {kotlin.Int::class, kotlin.String::class, kotlin.Float::class}) public final class Klass {
+    /*primary*/ public constructor Klass()
+}
