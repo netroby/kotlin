@@ -186,6 +186,10 @@ private object ReflectClassStructure {
     private fun processAnnotationArgumentValue(visitor: KotlinJvmBinaryClass.AnnotationArgumentVisitor, name: Name, value: Any) {
         val clazz = value::class.java
         when {
+            clazz == Class::class.java -> {
+                val classId = clazz.classId
+                visitor.visitClassLiteral(name, classId)
+            }
             clazz in TYPES_ELIGIBLE_FOR_SIMPLE_VISIT -> {
                 visitor.visit(name, value)
             }
@@ -206,6 +210,11 @@ private object ReflectClassStructure {
                     val enumClassId = componentType.classId
                     for (element in value as Array<*>) {
                         v.visitEnum(enumClassId, Name.identifier((element as Enum<*>).name))
+                    }
+                }
+                else if (componentType == Class::class.java) {
+                    for (element in value as Array<*>) {
+                        v.visitClassLiteral(componentType.classId)
                     }
                 }
                 else {

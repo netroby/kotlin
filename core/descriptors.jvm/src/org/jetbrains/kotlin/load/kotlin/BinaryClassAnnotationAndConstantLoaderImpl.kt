@@ -17,19 +17,21 @@
 package org.jetbrains.kotlin.load.kotlin
 
 import org.jetbrains.kotlin.descriptors.*
-import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
-import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptorImpl
-import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
-import org.jetbrains.kotlin.descriptors.annotations.AnnotationWithTarget
+import org.jetbrains.kotlin.descriptors.annotations.*
+import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.load.java.components.DescriptorResolverUtils
 import org.jetbrains.kotlin.load.kotlin.KotlinJvmBinaryClass.AnnotationArrayArgumentVisitor
 import org.jetbrains.kotlin.metadata.ProtoBuf
 import org.jetbrains.kotlin.metadata.deserialization.NameResolver
 import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.constants.*
+import org.jetbrains.kotlin.resolve.descriptorUtil.resolveTopLevelClass
 import org.jetbrains.kotlin.serialization.deserialization.AnnotationDeserializer
 import org.jetbrains.kotlin.storage.StorageManager
+import org.jetbrains.kotlin.types.KotlinTypeFactory
+import org.jetbrains.kotlin.types.TypeProjectionImpl
 import org.jetbrains.kotlin.utils.compact
 import java.util.*
 
@@ -103,6 +105,11 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
                 }
             }
 
+            override fun visitClassLiteral(name: Name, classId: ClassId) {
+                arguments[name] = classId.toClassValue() ?:
+                        ErrorValue.create("Error value of annotation argument: $name: class literal  ${classId.shortClassName} not found")
+            }
+
             override fun visitEnum(name: Name, enumClassId: ClassId, enumEntryName: Name) {
                 arguments[name] = EnumValue(enumClassId, enumEntryName)
             }
@@ -117,6 +124,13 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
 
                     override fun visitEnum(enumClassId: ClassId, enumEntryName: Name) {
                         elements.add(EnumValue(enumClassId, enumEntryName))
+                    }
+
+                    override fun visitClassLiteral(classId: ClassId) {
+                        elements.add(
+                            classId.toClassValue()
+                                ?: ErrorValue.create("Error array element value of annotation argument: $name: class literal  ${classId.shortClassName} not found")
+                        )
                     }
 
                     override fun visitEnd() {
@@ -149,6 +163,15 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
             }
         }
     }
+
+    private fun ClassId.toClassValue(): KClassValue? =
+        module.findClassAcrossModuleDependencies(this)?.let { classDescr ->
+            val jlClass = module.resolveTopLevelClass(FqName("java.lang.Class"), NoLookupLocation.FOR_NON_TRACKED_SCOPE)
+                ?: return@let null
+            val arguments = listOf(TypeProjectionImpl(classDescr.defaultType))
+            val javaClassType = KotlinTypeFactory.simpleNotNullType(Annotations.EMPTY, jlClass, arguments)
+            KClassValue(javaClassType)
+        }
 
     private fun resolveClass(classId: ClassId): ClassDescriptor {
         return module.findNonGenericClassAcrossDependencies(classId, notFoundClasses)

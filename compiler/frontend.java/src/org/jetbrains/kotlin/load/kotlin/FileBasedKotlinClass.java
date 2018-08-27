@@ -20,16 +20,15 @@ import com.intellij.openapi.util.Ref;
 import kotlin.jvm.functions.Function4;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.kotlin.builtins.jvm.JavaToKotlinClassMap;
 import org.jetbrains.kotlin.descriptors.SourceElement;
 import org.jetbrains.kotlin.load.kotlin.header.KotlinClassHeader;
 import org.jetbrains.kotlin.load.kotlin.header.ReadKotlinClassHeaderAnnotationVisitor;
 import org.jetbrains.kotlin.name.ClassId;
 import org.jetbrains.kotlin.name.FqName;
 import org.jetbrains.kotlin.name.Name;
-import org.jetbrains.org.objectweb.asm.ClassReader;
-import org.jetbrains.org.objectweb.asm.ClassVisitor;
-import org.jetbrains.org.objectweb.asm.FieldVisitor;
-import org.jetbrains.org.objectweb.asm.MethodVisitor;
+import org.jetbrains.kotlin.resolve.jvm.JvmPrimitiveType;
+import org.jetbrains.org.objectweb.asm.*;
 
 import java.util.*;
 
@@ -173,7 +172,13 @@ public abstract class FileBasedKotlinClass implements KotlinJvmBinaryClass {
         return new org.jetbrains.org.objectweb.asm.AnnotationVisitor(ASM5) {
             @Override
             public void visit(String name, @NotNull Object value) {
-                v.visit(name == null ? null : Name.identifier(name), value);
+                if (value instanceof Type) {
+                    ClassId classId = resolveKotlinNameByDesc(((Type)value).getDescriptor(), innerClasses);
+                    v.visitClassLiteral(Name.identifier(name), classId);
+                }
+                else {
+                    v.visit(name == null ? null : Name.identifier(name), value);
+                }
             }
 
             @Override
@@ -182,7 +187,13 @@ public abstract class FileBasedKotlinClass implements KotlinJvmBinaryClass {
                 return arv == null ? null : new org.jetbrains.org.objectweb.asm.AnnotationVisitor(ASM5) {
                     @Override
                     public void visit(String name, @NotNull Object value) {
-                        arv.visit(value);
+                        if (value instanceof Type) {
+                            ClassId classId = resolveKotlinNameByDesc(((Type)value).getDescriptor(), innerClasses);
+                            arv.visitClassLiteral(classId);
+                        }
+                        else {
+                            arv.visit(value);
+                        }
                     }
 
                     @Override
@@ -268,6 +279,18 @@ public abstract class FileBasedKotlinClass implements KotlinJvmBinaryClass {
         assert desc.startsWith("L") && desc.endsWith(";") : "Not a JVM descriptor: " + desc;
         String name = desc.substring(1, desc.length() - 1);
         return resolveNameByInternalName(name, innerClasses);
+    }
+
+    @NotNull
+    private static ClassId resolveKotlinNameByDesc(@NotNull String desc, @NotNull InnerClassesInfo innerClasses) {
+        JvmPrimitiveType primType = JvmPrimitiveType.getByDesc(desc);
+        if (primType != null) {
+            return ClassId.topLevel(primType.getPrimitiveType().getTypeFqName());
+        }
+        ClassId javaClassId = resolveNameByDesc(desc, innerClasses);
+        ClassId kotlinClassId = JavaToKotlinClassMap.INSTANCE.mapJavaToKotlin(javaClassId.asSingleFqName());
+        if (kotlinClassId != null) return kotlinClassId;
+        return javaClassId;
     }
 
     @NotNull
