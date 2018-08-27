@@ -173,8 +173,8 @@ public abstract class FileBasedKotlinClass implements KotlinJvmBinaryClass {
             @Override
             public void visit(String name, @NotNull Object value) {
                 if (value instanceof Type) {
-                    ClassId classId = resolveKotlinNameByDesc(((Type)value).getDescriptor(), innerClasses);
-                    v.visitClassLiteral(Name.identifier(name), classId);
+                    ClassLiteralId classLiteralId = resolveKotlinNameByDesc(((Type)value).getDescriptor(), innerClasses);
+                    v.visitClassLiteral(Name.identifier(name), classLiteralId);
                 }
                 else {
                     v.visit(name == null ? null : Name.identifier(name), value);
@@ -188,8 +188,8 @@ public abstract class FileBasedKotlinClass implements KotlinJvmBinaryClass {
                     @Override
                     public void visit(String name, @NotNull Object value) {
                         if (value instanceof Type) {
-                            ClassId classId = resolveKotlinNameByDesc(((Type)value).getDescriptor(), innerClasses);
-                            arv.visitClassLiteral(classId);
+                            ClassLiteralId classLiteralId = resolveKotlinNameByDesc(((Type)value).getDescriptor(), innerClasses);
+                            arv.visitClassLiteral(classLiteralId);
                         }
                         else {
                             arv.visit(value);
@@ -282,15 +282,19 @@ public abstract class FileBasedKotlinClass implements KotlinJvmBinaryClass {
     }
 
     @NotNull
-    private static ClassId resolveKotlinNameByDesc(@NotNull String desc, @NotNull InnerClassesInfo innerClasses) {
-        JvmPrimitiveType primType = JvmPrimitiveType.getByDesc(desc);
-        if (primType != null) {
-            return ClassId.topLevel(primType.getPrimitiveType().getTypeFqName());
+    private static ClassLiteralId resolveKotlinNameByDesc(@NotNull String desc, @NotNull InnerClassesInfo innerClasses) {
+        int nestedness = 0;
+        while (nestedness < desc.length() && desc.charAt(nestedness) == '[') {
+            nestedness++;
         }
-        ClassId javaClassId = resolveNameByDesc(desc, innerClasses);
+        String nonArrayDesc = nestedness == 0 ? desc : desc.substring(nestedness);
+        JvmPrimitiveType primType = JvmPrimitiveType.getByDesc(nonArrayDesc);
+        if (primType != null) {
+            return new ClassLiteralId(ClassId.topLevel(primType.getPrimitiveType().getTypeFqName()), nestedness);
+        }
+        ClassId javaClassId = resolveNameByDesc(nonArrayDesc, innerClasses);
         ClassId kotlinClassId = JavaToKotlinClassMap.INSTANCE.mapJavaToKotlin(javaClassId.asSingleFqName());
-        if (kotlinClassId != null) return kotlinClassId;
-        return javaClassId;
+        return new ClassLiteralId(kotlinClassId != null ? kotlinClassId : javaClassId, nestedness);
     }
 
     @NotNull

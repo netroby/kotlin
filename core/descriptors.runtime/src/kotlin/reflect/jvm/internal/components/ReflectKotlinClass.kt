@@ -183,12 +183,21 @@ private object ReflectClassStructure {
         visitor.visitEnd()
     }
 
+    private fun Class<*>.classLiteralId(): KotlinJvmBinaryClass.ClassLiteralId {
+        var currentClass = this
+        var nestedness = 0
+        while (currentClass.isArray) {
+            nestedness++
+            currentClass = currentClass.componentType
+        }
+        return KotlinJvmBinaryClass.ClassLiteralId(currentClass.classId, nestedness)
+    }
+
     private fun processAnnotationArgumentValue(visitor: KotlinJvmBinaryClass.AnnotationArgumentVisitor, name: Name, value: Any) {
         val clazz = value::class.java
         when {
             clazz == Class::class.java -> {
-                val classId = clazz.classId
-                visitor.visitClassLiteral(name, classId)
+                visitor.visitClassLiteral(name, clazz.classLiteralId())
             }
             clazz in TYPES_ELIGIBLE_FOR_SIMPLE_VISIT -> {
                 visitor.visit(name, value)
@@ -214,7 +223,7 @@ private object ReflectClassStructure {
                 }
                 else if (componentType == Class::class.java) {
                     for (element in value as Array<*>) {
-                        v.visitClassLiteral((element as Class<*>).classId)
+                        v.visitClassLiteral((element as Class<*>).classLiteralId())
                     }
                 }
                 else {

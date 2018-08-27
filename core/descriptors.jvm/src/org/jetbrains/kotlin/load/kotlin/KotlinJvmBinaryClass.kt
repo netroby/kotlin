@@ -53,10 +53,12 @@ interface KotlinJvmBinaryClass {
         fun visitParameterAnnotation(index: Int, classId: ClassId, source: SourceElement): AnnotationArgumentVisitor?
     }
 
+    class ClassLiteralId(val classId: ClassId, val arrayNestedness: Int)
+
     interface AnnotationArgumentVisitor {
         fun visit(name: Name?, value: Any?)
 
-        fun visitClassLiteral(name: Name, classId: ClassId)
+        fun visitClassLiteral(name: Name, classLiteralId: ClassLiteralId)
 
         fun visitEnum(name: Name, enumClassId: ClassId, enumEntryName: Name)
 
@@ -72,7 +74,7 @@ interface KotlinJvmBinaryClass {
 
         fun visitEnum(enumClassId: ClassId, enumEntryName: Name)
 
-        fun visitClassLiteral(classId: ClassId)
+        fun visitClassLiteral(classLiteralId: ClassLiteralId)
 
         fun visitEnd()
     }

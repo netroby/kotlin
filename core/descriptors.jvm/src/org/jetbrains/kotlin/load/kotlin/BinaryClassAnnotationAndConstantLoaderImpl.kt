@@ -19,20 +19,18 @@ package org.jetbrains.kotlin.load.kotlin
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.*
-import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.load.java.components.DescriptorResolverUtils
 import org.jetbrains.kotlin.load.kotlin.KotlinJvmBinaryClass.AnnotationArrayArgumentVisitor
 import org.jetbrains.kotlin.metadata.ProtoBuf
 import org.jetbrains.kotlin.metadata.deserialization.NameResolver
 import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.constants.*
-import org.jetbrains.kotlin.resolve.descriptorUtil.resolveTopLevelClass
 import org.jetbrains.kotlin.serialization.deserialization.AnnotationDeserializer
 import org.jetbrains.kotlin.storage.StorageManager
 import org.jetbrains.kotlin.types.KotlinTypeFactory
 import org.jetbrains.kotlin.types.TypeProjectionImpl
+import org.jetbrains.kotlin.types.Variance
 import org.jetbrains.kotlin.utils.compact
 import java.util.*
 
@@ -106,9 +104,9 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
                 }
             }
 
-            override fun visitClassLiteral(name: Name, classId: ClassId) {
-                arguments[name] = classId.toClassValue() ?:
-                        ErrorValue.create("Error value of annotation argument: $name: class literal  ${classId.asSingleFqName()} not found")
+            override fun visitClassLiteral(name: Name, classLiteralId: KotlinJvmBinaryClass.ClassLiteralId) {
+                arguments[name] = classLiteralId.toClassValue() ?:
+                        ErrorValue.create("Error value of annotation argument: $name: class ${classLiteralId.classId.asSingleFqName()} not found")
             }
 
             override fun visitEnum(name: Name, enumClassId: ClassId, enumEntryName: Name) {
@@ -127,10 +125,10 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
                         elements.add(EnumValue(enumClassId, enumEntryName))
                     }
 
-                    override fun visitClassLiteral(classId: ClassId) {
+                    override fun visitClassLiteral(classLiteralId: KotlinJvmBinaryClass.ClassLiteralId) {
                         elements.add(
-                            classId.toClassValue()
-                                ?: ErrorValue.create("Error array element value of annotation argument: $name: class literal  ${classId.asSingleFqName()} not found")
+                            classLiteralId.toClassValue()
+                                ?: ErrorValue.create("Error array element value of annotation argument: $name: class ${classLiteralId.classId.asSingleFqName()} not found")
                         )
                     }
 
@@ -165,11 +163,18 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
         }
     }
 
-    private fun ClassId.toClassValue(): KClassValue? =
-        module.findClassAcrossModuleDependencies(this)?.let { classDescriptor ->
+    private fun KotlinJvmBinaryClass.ClassLiteralId.toClassValue(): KClassValue? =
+        module.findClassAcrossModuleDependencies(this.classId)?.let { classDescriptor ->
             val kClass = resolveClass(ClassId.topLevel(KotlinBuiltIns.FQ_NAMES.kClass.toSafe()))
             val arguments = listOf(TypeProjectionImpl(classDescriptor.defaultType))
-            KClassValue(KotlinTypeFactory.simpleNotNullType(Annotations.EMPTY, kClass, arguments))
+            var type = KotlinTypeFactory.simpleNotNullType(Annotations.EMPTY, kClass, arguments)
+            for (i in 0 until this.arrayNestedness) {
+                val nextWrappedType =
+                    (if (i == 0) module.builtIns.getPrimitiveArrayKotlinTypeByPrimitiveKotlinType(type) else null)
+                        ?: module.builtIns.getArrayType(Variance.INVARIANT, type)
+                type = nextWrappedType
+            }
+            KClassValue(type)
         }
 
     private fun resolveClass(classId: ClassId): ClassDescriptor {

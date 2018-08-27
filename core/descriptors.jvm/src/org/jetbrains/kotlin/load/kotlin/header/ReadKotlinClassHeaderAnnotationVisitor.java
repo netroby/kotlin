@@ -163,7 +163,7 @@ public class ReadKotlinClassHeaderAnnotationVisitor implements AnnotationVisitor
         }
 
         @Override
-        public void visitClassLiteral(@NotNull Name name, @NotNull ClassId classId) {
+        public void visitClassLiteral(@NotNull Name name, @NotNull ClassLiteralId classLiteralId) {
         }
 
         @Override
@@ -238,7 +238,7 @@ public class ReadKotlinClassHeaderAnnotationVisitor implements AnnotationVisitor
         }
 
         @Override
-        public void visitClassLiteral(@NotNull Name name, @NotNull ClassId classId) {
+        public void visitClassLiteral(@NotNull Name name, @NotNull ClassLiteralId classLiteralId) {
         }
 
         @Override
@@ -310,7 +310,7 @@ public class ReadKotlinClassHeaderAnnotationVisitor implements AnnotationVisitor
         }
 
         @Override
-        public void visitClassLiteral(@NotNull ClassId classId) {
+        public void visitClassLiteral(@NotNull ClassLiteralId classLiteralId) {
         }
 
         @Override
