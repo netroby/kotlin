@@ -214,7 +214,7 @@ private object ReflectClassStructure {
                 }
                 else if (componentType == Class::class.java) {
                     for (element in value as Array<*>) {
-                        v.visitClassLiteral(componentType.classId)
+                        v.visitClassLiteral((element as Class<*>).classId)
                     }
                 }
                 else {

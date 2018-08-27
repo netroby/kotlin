@@ -16,6 +16,7 @@
 
 package org.jetbrains.kotlin.load.kotlin
 
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.*
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
@@ -107,7 +108,7 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
 
             override fun visitClassLiteral(name: Name, classId: ClassId) {
                 arguments[name] = classId.toClassValue() ?:
-                        ErrorValue.create("Error value of annotation argument: $name: class literal  ${classId.shortClassName} not found")
+                        ErrorValue.create("Error value of annotation argument: $name: class literal  ${classId.asSingleFqName()} not found")
             }
 
             override fun visitEnum(name: Name, enumClassId: ClassId, enumEntryName: Name) {
@@ -129,7 +130,7 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
                     override fun visitClassLiteral(classId: ClassId) {
                         elements.add(
                             classId.toClassValue()
-                                ?: ErrorValue.create("Error array element value of annotation argument: $name: class literal  ${classId.shortClassName} not found")
+                                ?: ErrorValue.create("Error array element value of annotation argument: $name: class literal  ${classId.asSingleFqName()} not found")
                         )
                     }
 
@@ -165,12 +166,10 @@ class BinaryClassAnnotationAndConstantLoaderImpl(
     }
 
     private fun ClassId.toClassValue(): KClassValue? =
-        module.findClassAcrossModuleDependencies(this)?.let { classDescr ->
-            val jlClass = module.resolveTopLevelClass(FqName("java.lang.Class"), NoLookupLocation.FOR_NON_TRACKED_SCOPE)
-                ?: return@let null
-            val arguments = listOf(TypeProjectionImpl(classDescr.defaultType))
-            val javaClassType = KotlinTypeFactory.simpleNotNullType(Annotations.EMPTY, jlClass, arguments)
-            KClassValue(javaClassType)
+        module.findClassAcrossModuleDependencies(this)?.let { classDescriptor ->
+            val kClass = resolveClass(ClassId.topLevel(KotlinBuiltIns.FQ_NAMES.kClass.toSafe()))
+            val arguments = listOf(TypeProjectionImpl(classDescriptor.defaultType))
+            KClassValue(KotlinTypeFactory.simpleNotNullType(Annotations.EMPTY, kClass, arguments))
         }
 
     private fun resolveClass(classId: ClassId): ClassDescriptor {
