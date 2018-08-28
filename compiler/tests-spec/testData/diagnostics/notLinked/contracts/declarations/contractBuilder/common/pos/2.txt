@@ -1,0 +1,15 @@
+package
+
+public fun _fun(): kotlin.Int
+public fun _fun(/*0*/ value_1: kotlin.collections.List<kotlin.Int>): kotlin.Int
+public fun _fun(/*0*/ value_1: kotlin.collections.List<kotlin.Int>, /*1*/ value_2: kotlin.collections.List<kotlin.Int>): kotlin.Int
+public fun _funWithAnyArg(/*0*/ value_1: kotlin.Any): kotlin.Int
+internal inline fun case_1(/*0*/ block: () -> kotlin.Unit): kotlin.Unit
+public fun case_2(): kotlin.Unit
+public inline fun case_3(/*0*/ block: () -> kotlin.Unit): kotlin.Unit
+public inline fun case_4(/*0*/ block: () -> kotlin.Unit): kotlin.Unit
+public inline fun case_5(/*0*/ block: () -> kotlin.Unit): kotlin.Unit
+public inline fun case_6(/*0*/ block: () -> kotlin.Unit): kotlin.Unit
+public inline fun case_7(/*0*/ block: () -> kotlin.Unit): kotlin.Unit
+public inline fun case_8(/*0*/ block: () -> kotlin.Unit): kotlin.Unit
+public inline fun case_8_exactlyOnceContractBuilder(/*0*/ block: () -> kotlin.Unit): () -> kotlin.Unit
